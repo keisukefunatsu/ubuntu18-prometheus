@@ -1,0 +1,20 @@
+
+prometheus_groups:
+  - name: prometheus
+    system: true
+    state: present
+
+prometheus_users:
+  - name: prometheus
+    system: true
+    create_home: false
+    state: present
+  - name: node_exporter
+    system: true
+    create_home: false
+    state: present
+
+prometheus_version: &prometheus_version "2.12.0"
+prometheus_github_url:  https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz
+prometheus_archive_file: /tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz
+prometheus_tmp_directory: /tmp/prometheus-{{ prometheus_version }}.linux-amd64

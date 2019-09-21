@@ -1,0 +1,109 @@
+- name: Set up Prometheus
+  hosts: all
+  become: true
+  tasks:
+    - name: 
+      debug:
+        msg: "{{ prometheus_tmp_directory }}"
+
+    - name: Create Prometheus groups
+      group:
+        name: "{{ item.name }}"
+        system: true
+        state: present
+      with_items: "{{ prometheus_groups }}"
+
+
+    - name: Create Prometheus users
+      user:
+        name: "{{ item.name }}" 
+        system: "{{ item.system }}"
+        create_home: "{{ item.create_home }}"
+        state: "{{ item.state }}"
+      with_items: "{{ prometheus_users }}"
+        
+    - name: Make Prometheus directory
+      file:
+        path: /etc/prometheus
+        state: directory
+        owner: prometheus
+        group: prometheus
+
+    - name: Make Prometheus directory
+      file:
+        path: /var/lib/prometheus
+        state: directory
+        owner: prometheus
+        group: prometheus
+
+    - name: Download Prometheus
+      get_url:
+        url: "{{ prometheus_github_url }}"
+        dest: "{{ prometheus_archive_file }}"
+
+    - name: unarchive
+      unarchive:
+        remote_src: true
+        src: "{{ prometheus_archive_file }}"
+        dest: /tmp
+
+    - name: Copy bin file
+      copy:
+        remote_src: true
+        src: "{{ prometheus_tmp_directory }}/prometheus"
+        dest: /usr/local/bin/prometheus
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+
+    - name: Copy bin file
+      copy:
+        remote_src: true
+        src: "{{ prometheus_tmp_directory }}/promtool"
+        dest: /usr/local/bin/promtool
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+
+    - name: Copy bin file
+      copy:
+        remote_src: true
+        src: "{{ prometheus_tmp_directory }}/consoles"
+        dest: /etc/prometheus
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+
+    - name: Copy bin file
+      copy:
+        remote_src: true
+        src: "{{ prometheus_tmp_directory }}/console_libraries"
+        dest: /etc/prometheus
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+
+    - name: Copy configuration file
+      copy:
+        src: prometheus.yml
+        dest: /etc/prometheus/prometheus.yml
+        owner: prometheus
+        group: prometheus
+
+    - name: Copy systemd file
+      copy:
+        src: prometheus.service
+        dest: /etc/systemd/system/prometheus.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: just force systemd to reload configs
+      systemd:
+        daemon_reload: true
+
+    - name: enable a timer for dnf-automatic
+      systemd:
+        name: prometheus
+        state: started
+        enabled: true
