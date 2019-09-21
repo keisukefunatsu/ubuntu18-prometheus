@@ -1,18 +1,29 @@
 - name: Set up Prometheus
   hosts: all
   become: true
+  handlers:
+    - name: Force systemd to reload configs
+      systemd:
+        daemon_reload: true
+    - name: Restart nginx
+      systemd:
+        name: nginx
+        state: reloaded    
+  pre_tasks:
+    - name: Run the equivalent of "apt-get update" as a separate step
+      apt:
+        update_cache: yes
+    - name: Upgrade all packages to the latest version
+      apt:
+        name: "*"
+        state: latest
   tasks:
-    - name: 
-      debug:
-        msg: "{{ prometheus_tmp_directory }}"
-
     - name: Create Prometheus groups
       group:
         name: "{{ item.name }}"
         system: true
         state: present
       with_items: "{{ prometheus_groups }}"
-
 
     - name: Create Prometheus users
       user:
@@ -72,7 +83,6 @@
         dest: /etc/prometheus
         owner: prometheus
         group: prometheus
-        mode: '0755'
 
     - name: Copy bin file
       copy:
@@ -81,7 +91,6 @@
         dest: /etc/prometheus
         owner: prometheus
         group: prometheus
-        mode: '0755'
 
     - name: Copy configuration file
       copy:
@@ -98,12 +107,107 @@
         group: root
         mode: '0644'
 
-    - name: just force systemd to reload configs
-      systemd:
-        daemon_reload: true
-
-    - name: enable a timer for dnf-automatic
+    - name: Enable a timer for dnf-automatic
       systemd:
         name: prometheus
         state: started
         enabled: true
+
+    - name: Download Node exporter
+      get_url:
+        url: "{{ node_exporter_github_url }}"
+        dest: "{{ node_exporter_archive_file }}"
+
+    - name: unarchive
+      unarchive:
+        remote_src: true
+        src: "{{ node_exporter_archive_file }}"
+        dest: /tmp        
+
+
+    - name: Copy bin file
+      copy:
+        remote_src: true
+        src: "{{ node_exporter_tmp_directory }}/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        owner: node_exporter
+        group: node_exporter
+        mode: '0755'
+
+    - name: Copy systemd file
+      copy:
+        src: node_exporter.service
+        dest: /etc/systemd/system/node_exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable a timer for dnf-automatic
+      systemd:
+        name: node_exporter
+        state: started
+        enabled: true
+
+    - name: Install packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+      loop: 
+        - apache2-utils
+        - python3-passlib
+        - python-passlib
+        - curl
+
+
+    - name: Set htpasswd
+      htpasswd:
+        path: /etc/nginx/.htpasswd
+        name: sammy
+        password: "{{ htpasswd }}"
+        crypt_scheme: md5_crypt
+        owner: root
+        group: www-data
+        mode: 0640        
+
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: latest
+
+    - name: Enable service nginx
+      systemd:
+        name: nginx
+        enabled: yes
+
+    - name: Copy nginx conf file
+      copy:
+        src: nginx.prometheus.conf
+        dest: /etc/nginx/sites-available/prometheus
+
+    - name: Remove nginx default conf
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+    - name: Create nginx symlink
+      file:
+        src: /etc/nginx/sites-available/prometheus
+        dest: /etc/nginx/sites-enabled/prometheus
+        state: link
+
+    - name: Allow ufw apps
+      ufw:
+        rule: allow
+        name: "{{ item }}"
+      loop:
+        - Nginx HTTP
+        - Nginx HTTPS
+        - OpenSSH
+
+    - name: Enable ufw logging
+      ufw: 
+        logging: True
+
+    - name: Enable ufw
+      ufw: 
+        state: enabled
+        

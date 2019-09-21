@@ -18,3 +18,9 @@ prometheus_version: &prometheus_version "2.12.0"
 prometheus_github_url:  https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz
 prometheus_archive_file: /tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz
 prometheus_tmp_directory: /tmp/prometheus-{{ prometheus_version }}.linux-amd64
+node_exporter_version: 0.18.1
+node_exporter_github_url: https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz
+node_exporter_archive_file: /tmp/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz
+node_exporter_tmp_directory: /tmp/node_exporter-{{ node_exporter_version }}.linux-amd64
+
+htpasswd: 'mYp@sSWoRd'
